@@ -1,0 +1,102 @@
+:root {
+    --base: rgb(239, 241, 245);
+    --text: rgb(76, 79, 105);
+    --crust: rgb(220, 224, 232);
+    --surface0: rgb(204, 208, 218);
+    --overlay0: rgb(156, 160, 176);
+    --subtext0: rgb(108, 111, 133);
+    --blue: rgb(30, 102, 245);
+    --sky: rgb(4, 165, 229);
+    --subtext1: rgb(92, 95, 119);
+    --surface1: rgb(188, 192, 204);
+    --overlay1: rgb(140, 143, 161);
+    --mantle: rgb(230, 233, 239);
+    
+    --font-size: 1.25vw;
+    --border-radius: 0.5rem;
+    --small-padding: 0.5rem;
+    --padding: 1.0rem;
+    --margin: 0.5rem;
+    --indent: 2rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --base: rgb(30, 30, 46);
+        --text: rgb(205, 214, 244);
+        --crust: rgb(17, 17, 27);
+        --surface0: rgb(49, 50, 68);
+        --overlay0: rgb(108, 112, 134);
+        --subtext0: rgb(166, 173, 200);
+        --blue: rgb(137, 180, 250);
+        --sky: rgb(137, 220, 235);
+        --subtext1: rgb(186, 194, 222);
+        --surface1: rgb(69, 71, 90);
+        --overlay1: rgb(127, 132, 156);
+        --mantle: rgb(24, 24, 37);
+    }
+}
+
+@media (width <= 800px), (orientation: portrait) {
+    :root {
+        --font-size: 3vw;
+    }
+}
+
+* {
+    transition: background-color 0.25s, color 0.25s;
+}
+
+body {
+    background-color: var(--base);
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif;
+    margin: 0;
+    font-size: var(--font-size);
+}
+
+input, button {
+    font-size: var(--font-size);
+}
+
+em, strong {
+    color: var(--subtext1);
+}
+
+h2, h3, h4, h5, h6, h7, h8, hr {
+    color: var(--subtext0);
+}
+
+input[type=submit], input[type=button], input[type=text], button, textarea {
+    background-color: var(--crust);
+    border: none;
+    border-radius: var(--border-radius);
+    padding: var(--small-padding);
+    color: var(--text);
+    margin: var(--margin);
+}
+
+img {
+    border-radius: var(--border-radius);
+    object-fit: scale-down;
+}
+
+input[type=submit]:hover, input[type=button]:hover, input[type=text]:hover, button:hover, textarea:hover {
+    background-color: var(--surface0);
+    color: var(--text);
+}
+
+input[type=text]:focus, textarea:focus {
+    outline-style: solid;
+    outline-color: var(--overlay0);
+    outline-width: 0.2rem;
+}
+
+a {
+    text-decoration: none;
+    color: var(--blue);
+}
+
+a:hover {
+    color: var(--sky);
+}

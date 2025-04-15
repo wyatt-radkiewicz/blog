@@ -1,0 +1,32 @@
+body {
+    padding: 0 5vw 0;
+}
+
+body > main {
+    padding: 0 15vw 10rem;
+}
+
+body > header {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+body > header h3 {
+    margin: 0 1rem 0;
+}
+
+body > header .padding {
+    flex: 1;
+}
+
+body > header button {
+    width: max(10vw, 10rem);
+}
+
+@media (width <= 800px), (orientation: portrait) {
+    body > main {
+        padding: 0 5vw 10rem;
+    }
+}

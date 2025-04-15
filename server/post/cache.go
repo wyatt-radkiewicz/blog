@@ -1,9 +1,11 @@
 package post
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,14 +17,16 @@ import (
 type Cache struct {
 	dir     string
 	watcher *fsnotify.Watcher
-	posts   map[string]*Post
-	mu		sync.RWMutex
+	Posts   map[string]*Post
+	Tags    map[string]int
+	Mu      sync.RWMutex
 }
 
 func LoadCache(dir string) (*Cache, error) {
 	c := Cache{
 		dir:   dir,
-		posts: make(map[string]*Post),
+		Posts: make(map[string]*Post),
+		Tags:  make(map[string]int),
 	}
 
 	// Read the directory
@@ -41,50 +45,79 @@ func LoadCache(dir string) (*Cache, error) {
 			continue
 		}
 
-		p, err := loadPost(filepath.Join(dir, ent.Name()))
-		if err != nil {
+		if err := c.cache(ent.Name()); err != nil {
 			return nil, err
 		}
-		c.posts[ent.Name()] = &p
 	}
 
 	// Watch for changes of markdown files
 	go func() {
-		select {
-		case event, ok := <-c.watcher.Events:
-			if !ok {
-				return
-			}
-
-			c.mu.Lock()
-			switch event.Op {
-			case fsnotify.Remove, fsnotify.Write:
-				delete(c.posts, event.Name)
-			}
-
-			switch event.Op {
-			case fsnotify.Create, fsnotify.Write:
-				if p, err := loadPost(filepath.Join(dir, event.Name)); err == nil {
-					c.posts[event.Name] = &p
+		for {
+			select {
+			case event, ok := <-c.watcher.Events:
+				if !ok {
+					return
 				}
+
+				c.Mu.Lock()
+				switch {
+				case event.Has(fsnotify.Remove), event.Has(fsnotify.Write):
+					c.uncache(filepath.Base(event.Name))
+				}
+
+				switch {
+				case event.Has(fsnotify.Create), event.Has(fsnotify.Write):
+					if err := c.cache(filepath.Base(event.Name)); err != nil {
+						fmt.Println(err)
+					}
+				}
+				c.Mu.Unlock()
+			case event, ok := <-c.watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println(event)
 			}
-			c.mu.Unlock()
-		case event, ok := <-c.watcher.Errors:
-			if !ok {
-				return
-			}
-			log.Println(event)
 		}
 	}()
-	if err = c.watcher.Add(dir); err != nil {
+	if err = c.watcher.AddWith(dir); err != nil {
 		return nil, err
 	} else {
 		return &c, nil
 	}
 }
 
-func (c *Cache) CloseCache() {
-	c.watcher.Close()
+func (c *Cache) Close() error {
+	return c.watcher.Close()
+}
+
+func (c *Cache) cache(name string) error {
+	p, err := loadPost(filepath.Join(c.dir, name))
+	if err != nil {
+		return err
+	}
+	c.Posts[name] = &p
+	for tag := range p.Tags {
+		c.Tags[tag] += 1
+	}
+	return nil
+}
+
+func (c *Cache) uncache(name string) {
+	p, ok := c.Posts[name]
+	if !ok {
+		return
+	}
+	for tag, _ := range p.Tags {
+		if rc, ok := c.Tags[tag]; ok {
+			if rc == 1 {
+				delete(c.Tags, tag)
+			} else {
+				c.Tags[tag] = rc - 1
+			}
+		}
+	}
+	delete(c.Posts, name)
 }
 
 type QueryOptions struct {
@@ -110,9 +143,9 @@ func (c *Cache) Query(opts QueryOptions) []Post {
 	results := make([]queryResult, 0)
 
 	// Start search in after and to before
-	c.mu.RLock()
+	c.Mu.RLock()
 outer:
-	for _, p := range c.posts {
+	for _, p := range c.Posts {
 		// Check for needed tags
 		for _, needed := range opts.Tags {
 			if _, ok := p.Tags[needed]; !ok {
@@ -135,7 +168,7 @@ outer:
 		}
 		results = append(results, res)
 	}
-	c.mu.RUnlock()
+	c.Mu.RUnlock()
 
 	// Sort the results
 	slices.SortFunc(results, func(a, b queryResult) int {
@@ -144,12 +177,12 @@ outer:
 		} else if a.rank < b.rank {
 			return -1
 		} else {
-			if a.post.Created.After(b.post.Created) {
+			if a.post.Created.Before(b.post.Created) {
 				return 1
-			} else if a.post.Created.Before(b.post.Created) {
+			} else if a.post.Created.After(b.post.Created) {
 				return -1
 			} else {
-				return 0
+				return strings.Compare(a.post.Title, b.post.Title)
 			}
 		}
 	})

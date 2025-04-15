@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+	"html/template"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -19,7 +20,7 @@ import (
 
 // Post metadata after parsing. If the source changes, this must be reparsed
 type Post struct {
-	HTML    []byte
+	HTML    template.HTML
 	Title   string
 	Tags    map[string]struct{}
 	Created time.Time
@@ -63,7 +64,7 @@ func loadPost(file string) (Post, error) {
 		RenderNodeHook: renderHook,
 	}
 	renderer := html.NewRenderer(opts)
-	p.HTML = markdown.Render(root, renderer)
+	p.HTML = template.HTML(markdown.Render(root, renderer))
 	return p, nil
 }
 
