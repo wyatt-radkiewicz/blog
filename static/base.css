@@ -58,6 +58,7 @@ img {
     max-height: 50vw;
     object-fit: contain;
     display: block;
+    margin: var(--padding) 0;
 }
 
 .post-title {
