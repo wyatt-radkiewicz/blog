@@ -39,19 +39,22 @@ func LoadBlogConfig() *BlogConfig {
 		Daemon:   false,
 	}
 
-	// Set correct working directory
-	if wd, err := filepath.Abs(filepath.Dir(os.Args[0])); err != nil {
-		log.Println(err)
-		os.Exit(-1)
-	} else if err := os.Chdir(wd); err != nil {
-		log.Println(err)
-		os.Exit(-1)
-	}
-
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("Error loading environment file")
-		log.Println(err)
+		// Set correct working directory
+		if wd, err := filepath.Abs(filepath.Dir(os.Args[0])); err != nil {
+			log.Println(err)
+			os.Exit(-1)
+		} else if err := os.Chdir(wd); err != nil {
+			log.Println(err)
+			os.Exit(-1)
+		} else {
+			os.Args[0] = "./" + filepath.Base(os.Args[0])
+			if err := godotenv.Load(); err != nil {
+				log.Println("Error loading environment file")
+				log.Println(err)
+			}
+		}
 	}
 
 	// Load command line parameters
@@ -144,19 +147,9 @@ func HandleDaemon(cfg *BlogConfig) {
 			cfg.LogFile.Close()
 		}
 
-		// Get working directory and basename of executable
-		wd, err := os.Getwd()
-		if err != nil {
-			log.Println(err)
-			log.Println("Couldn't find working directory")
-			os.Exit(-1)
-		}
-		basename := filepath.Base(os.Args[0])
-
 		// Configure background process
-		cmd := exec.Command("./" + basename, os.Args[1:]...)
+		cmd := exec.Command(os.Args[0], os.Args[1:]...)
 		cmd.Env = append(os.Environ(), "DAEMONIZED=1")
-		cmd.Dir = wd
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Setpgid: true,
 		}
