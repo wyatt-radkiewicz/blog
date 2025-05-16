@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -40,18 +39,27 @@ func LoadBlogConfig() *BlogConfig {
 		Daemon:   false,
 	}
 
-	envfile := flag.String("e", ".env", "Where is the environment file")
-	daemon := flag.Bool("d", false, "Whether to daemonize the program")
-	flag.Parse()
-	if err := godotenv.Load(*envfile); err != nil {
+	// Set correct working directory
+	if wd, err := filepath.Abs(filepath.Dir(os.Args[0])); err != nil {
+		log.Println(err)
+		os.Exit(-1)
+	} else if err := os.Chdir(wd); err != nil {
+		log.Println(err)
+		os.Exit(-1)
+	}
+
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
 		log.Println("Error loading environment file")
 		log.Println(err)
 	}
+
+	// Load command line parameters
+	daemon := flag.Bool("d", false, "Whether to daemonize the program")
+	flag.Parse()
 	cfg.Daemon = *daemon
 
-	if val, ok := os.LookupEnv("BLOG_CWD"); ok {
-		os.Chdir(val)
-	}
+	// Get environment variables
 	if val, ok := os.LookupEnv("BLOG_POST_DIR"); ok {
 		cfg.PostDir = val
 	}
@@ -136,9 +144,19 @@ func HandleDaemon(cfg *BlogConfig) {
 			cfg.LogFile.Close()
 		}
 
+		// Get working directory and basename of executable
+		wd, err := os.Getwd()
+		if err != nil {
+			log.Println(err)
+			log.Println("Couldn't find working directory")
+			os.Exit(-1)
+		}
+		basename := filepath.Base(os.Args[0])
+
 		// Configure background process
-		cmd := exec.Command(os.Args[0], os.Args[1:]...)
+		cmd := exec.Command("./" + basename, os.Args[1:]...)
 		cmd.Env = append(os.Environ(), "DAEMONIZED=1")
+		cmd.Dir = wd
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Setpgid: true,
 		}
@@ -178,10 +196,7 @@ func HandleDaemon(cfg *BlogConfig) {
 				return
 			}
 
-			script := "cd $BLOG_CWD; git pull origin; rm blog; go build ./server && exec ./blog"
-			for _, arg := range os.Args[1:] {
-				script += fmt.Sprintf(" %s", arg)
-			}
+			script := "git pull origin; rm blog; go build ./server && exec ./blog -d"
 			syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
 		})
 	}
