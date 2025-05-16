@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -52,17 +53,17 @@ func LoadBlogConfig() *BlogConfig {
 	if val, ok := os.LookupEnv("BLOG_ADDR"); ok {
 		cfg.Addr = val
 	}
-	
+
 	pidfile := flag.String("p", "", "Where to write the pid file")
 	flag.Parse()
 	cfg.PIDFile = *pidfile
-	
+
 	return cfg
 }
 
 func main() {
 	cfg := LoadBlogConfig()
-	
+
 	if cfg.PIDFile != "" {
 		data := []byte(strconv.FormatInt(int64(syscall.Getpid()), 10))
 		err := os.WriteFile(cfg.PIDFile, data, 0777)
@@ -71,7 +72,7 @@ func main() {
 			log.Println("Couldn't create the pid file!")
 		}
 	}
-	
+
 	ps, err := NewPostStats(cfg)
 	if err != nil {
 		log.Println(err)
@@ -120,6 +121,9 @@ func HandleDeploy(cfg *BlogConfig) {
 		}
 
 		script := "git pull origin; rm blog; go build ./server && ./blog"
+		if cfg.PIDFile != "" {
+			script += fmt.Sprintf(" -p \"%s\"", cfg.PIDFile)
+		}
 		syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
 	})
 }
