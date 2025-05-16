@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - run: |
-        curl -X POST https://blog.eklipsed.net/admin/github-deploy
+        curl -X POST https://blog.eklipsed.net/admin/deploy
