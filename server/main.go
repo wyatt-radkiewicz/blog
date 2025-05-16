@@ -1,35 +1,37 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"syscall"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
 type BlogConfig struct {
-	PostDir      string
-	Password     string
-	Title        string
-	CertFile     string
-	KeyFile      string
-	Addr         string
-	DeployScript string
+	PostDir  string
+	Password string
+	Title    string
+	CertFile string
+	KeyFile  string
+	Addr     string
+	PIDFile  string
 }
 
 func LoadBlogConfig() *BlogConfig {
 	cfg := &BlogConfig{
-		PostDir:      "posts",
-		Password:     "admin",
-		Title:        "Eklipsed's Blog",
-		CertFile:     "server.crt",
-		KeyFile:      "server.key",
-		Addr:         ":3000",
-		DeployScript: "",
+		PostDir:  "posts",
+		Password: "admin",
+		Title:    "Eklipsed's Blog",
+		CertFile: "server.crt",
+		KeyFile:  "server.key",
+		Addr:     ":3000",
+		PIDFile:  "",
 	}
 
 	if val, ok := os.LookupEnv("BLOG_POST_DIR"); ok {
@@ -50,14 +52,26 @@ func LoadBlogConfig() *BlogConfig {
 	if val, ok := os.LookupEnv("BLOG_ADDR"); ok {
 		cfg.Addr = val
 	}
-	if val, ok := os.LookupEnv("BLOG_DEPLOY_SCRIPT"); ok {
-		cfg.DeployScript = val
-	}
+	
+	pidfile := flag.String("p", "", "Where to write the pid file")
+	flag.Parse()
+	cfg.PIDFile = *pidfile
+	
 	return cfg
 }
 
 func main() {
 	cfg := LoadBlogConfig()
+	
+	if cfg.PIDFile != "" {
+		data := []byte(strconv.FormatInt(int64(syscall.Getpid()), 10))
+		err := os.WriteFile(cfg.PIDFile, data, 0777)
+		if err != nil {
+			log.Println(err)
+			log.Println("Couldn't create the pid file!")
+		}
+	}
+	
 	ps, err := NewPostStats(cfg)
 	if err != nil {
 		log.Println(err)
@@ -98,10 +112,6 @@ func main() {
 }
 
 func HandleDeploy(cfg *BlogConfig) {
-	if cfg.DeployScript == "" {
-		return
-	}
-
 	http.HandleFunc("POST /admin/deploy", func(w http.ResponseWriter, r *http.Request) {
 		sh, err := exec.LookPath("sh")
 		if err != nil {
@@ -109,6 +119,7 @@ func HandleDeploy(cfg *BlogConfig) {
 			return
 		}
 
-		syscall.Exec(sh, []string{"sh", "-c", cfg.DeployScript}, os.Environ())
+		script := "git pull origin; rm blog; go build ./server && ./blog"
+		syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
 	})
 }
