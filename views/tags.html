@@ -1,0 +1,10 @@
+{{define "main"}}
+<h1>Search Posts by Tag</h1>
+<ul id="tag-list">
+  {{range .Tags}}
+  <li id="tag-{{.ID}}">
+    {{template "tag" .}}
+  </li>
+  {{end}}
+</ul>
+{{end}}

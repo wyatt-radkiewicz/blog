@@ -1,0 +1,25 @@
+{{define "tag"}}
+<h3>
+  {{if .Posts}}
+  <button hx-get="/tags/{{.ID}}" hx-target="#tag-{{.ID}}" hx-swap="innerHTML">
+    ⬆️
+  </button>
+  <span>{{.Tag}}</span>
+  {{else}}
+  <button
+    hx-get="/tags/{{.ID}}?showPosts"
+    hx-target="#tag-{{.ID}}"
+    hx-swap="innerHTML"
+  >
+    ⬇️
+  </button>
+  <span>{{.Tag}} <em>({{.Num}})</em></span>
+  {{end}}
+</h3>
+{{if .Posts}}
+<ul>
+  {{range .Posts}}
+  <li><a href="/post/{{.ID}}">{{.Title}}</a> <em>({{.Date}})</em></li>
+  {{end}}
+</ul>
+{{end}} {{end}}

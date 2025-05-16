@@ -1,0 +1,138 @@
+body {
+    padding: 2rem 5vw;
+}
+
+nav {
+    display: flex;
+    flex-flow: row nowrap;
+    flex: 0 1;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav > h2 {
+    margin: 0.5rem 0rem;
+}
+
+main {
+    padding: 0 10vw 10rem;
+}
+
+img {
+    max-width: 100%;
+}
+
+.gallery {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    gap: var(--padding);
+}
+
+.admin-ul {
+    padding: 0;
+}
+
+.admin-li {
+    list-style: none;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--margin) 3rem;
+}
+
+.centered-image {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.centered-image > img {
+    width: auto;
+    height: auto;
+    min-width: 35vw;
+    min-height: 240px;
+    max-width: 100%;
+    max-height: 50vw;
+    object-fit: contain;
+    display: block;
+}
+
+.post-title {
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    align-items: center;
+}
+
+.copy-header {
+    padding: var(--small-padding) 0;
+    border-radius: var(--small-padding);
+}
+
+.copy-header:hover::before {
+    content: "🔗 ";
+}
+
+.copy-header:hover {
+    padding: var(--small-padding);
+    background-color: var(--selection);
+    cursor: grab;
+}
+
+form li {
+    list-style: none;
+}
+
+#file-list {
+    margin: 0 var(--margin);
+}
+
+@keyframes copied-blink {
+    from {
+        background-color: var(--overlay2);
+        color: var(--subtext1);
+    }
+    to {}
+}
+
+.pill {
+    background-color: var(--blue);
+    color: var(--mantle);
+    border-radius: var(--padding);
+    padding: var(--padding);
+}
+
+.copied {
+    animation-name: copied-blink;
+    animation-duration: 0.25s;
+}
+
+.post-padding {
+    margin-top: 10vw;
+}
+
+.lowres {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+#post-files {
+    display: none;
+}
+
+#tag-list li,
+#tags li {
+    list-style: none;
+}
+
+@media (width <= 800px), (orientation: portrait) {
+    body {
+        padding: 2rem 1rem;
+    }
+    main {
+        padding: 0 1rem 10rem;
+    }
+}

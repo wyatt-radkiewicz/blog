@@ -1,0 +1,16 @@
+{{define "nav"}}
+<nav>
+  <h2>Eklipsed</h2>
+  <input
+    type="search"
+    name="Search"
+    placeholder="Search"
+    hx-post=""
+    hx-trigger="input changed delay:500ms, keyup[key=='Enter']"
+    hx-target={{.SearchTarget}}
+  />
+  <a href="/"><button>Home</button></a>
+  <a href="/about"><button>About</button></a>
+  <a href="/tags"><button>Tags</button></a>
+</nav>
+{{end}}

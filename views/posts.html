@@ -1,8 +1,5 @@
-{{define "posts"}}
-  {{range .}}
-    <hr>
-    <section>
-      {{.HTML}}
-    </section>
-  {{end}}
+{{define "main"}} {{range .Posts}}
+{{template "post" .}}
+{{end}} 
+<section hx-get={{.LoadPostsURL}} hx-trigger="revealed" hx-swap="outerHTML"></section>
 {{end}}

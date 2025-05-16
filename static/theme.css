@@ -10,12 +10,14 @@
     --subtext1: rgb(92, 95, 119);
     --surface1: rgb(188, 192, 204);
     --overlay1: rgb(140, 143, 161);
+    --overlay2: rgb(124, 127, 147);
+    --selection: rgba(124, 127, 147, 0.2);
     --mantle: rgb(230, 233, 239);
-    
-    --font-size: 1.25vw;
+
+    --font-size: 1.5vw;
     --border-radius: 0.5rem;
     --small-padding: 0.5rem;
-    --padding: 1.0rem;
+    --padding: 1rem;
     --margin: 0.5rem;
     --indent: 2rem;
 }
@@ -33,6 +35,8 @@
         --subtext1: rgb(186, 194, 222);
         --surface1: rgb(69, 71, 90);
         --overlay1: rgb(127, 132, 156);
+        --overlay2: rgb(147, 153, 178);
+        --selection: rgba(147, 153, 178, 0.2);
         --mantle: rgb(24, 24, 37);
     }
 }
@@ -44,7 +48,9 @@
 }
 
 * {
-    transition: background-color 0.25s, color 0.25s;
+    transition:
+        background-color 0.25s,
+        color 0.25s;
 }
 
 body {
@@ -55,19 +61,32 @@ body {
     font-size: var(--font-size);
 }
 
-input, button {
+input,
+button {
     font-size: var(--font-size);
 }
 
-em, strong {
+em,
+strong {
     color: var(--subtext1);
 }
 
-h2, h3, h4, h5, h6, h7, h8, hr {
+h2,
+h3,
+h4,
+h5,
+h6,
+h7,
+h8,
+hr {
     color: var(--subtext0);
 }
 
-input[type=submit], input[type=button], input[type=text], button, textarea {
+input,
+button,
+textarea,
+.mantle,
+.button {
     background-color: var(--crust);
     border: none;
     border-radius: var(--border-radius);
@@ -76,17 +95,25 @@ input[type=submit], input[type=button], input[type=text], button, textarea {
     margin: var(--margin);
 }
 
+.mantle {
+    background-color: var(--mantle);
+}
+
 img {
     border-radius: var(--border-radius);
     object-fit: scale-down;
 }
 
-input[type=submit]:hover, input[type=button]:hover, input[type=text]:hover, button:hover, textarea:hover {
+input:hover,
+button:hover,
+textarea:hover,
+.button:hover {
     background-color: var(--surface0);
     color: var(--text);
 }
 
-input[type=text]:focus, textarea:focus {
+input[type="text"]:focus,
+textarea:focus {
     outline-style: solid;
     outline-color: var(--overlay0);
     outline-width: 0.2rem;

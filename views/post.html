@@ -1,0 +1,38 @@
+{{define "post"}}
+<section id="post-{{.Post.Id}}">
+  <h1 class="post-title">
+    {{if .ShowButton}} {{if .Expand}}
+    <button
+      hx-get="/post/{{.Post.Id}}?Close"
+      hx-target="#post-{{.Post.Id}}"
+      hx-swap="outerHTML"
+    >
+      ⬆️
+    </button>
+    <span class="copy-header" post="{{.Post.Id}}">{{.Post.Info.Title}}</span>
+    {{else}}
+    <button
+      hx-get="/post/{{.Post.Id}}?Expand"
+      hx-target="#post-{{.Post.Id}}"
+      hx-swap="outerHTML"
+    >
+      ⬇️
+    </button>
+    <a href="/post/{{.Post.Id}}">{{.Post.Info.Title}}</a>
+    {{end}} {{else}}
+    <span class="copy-header" post="{{.Post.Id}}">{{.Post.Info.Title}}</span>
+    {{end}}
+  </h1>
+  <p><em>{{.Post.Info.Date | formatTime}}</em></p>
+  {{if .Expand}}
+  <hr />
+  {{.Post.Document}}
+  <ul id="tags">
+    {{range .Post.Info.Tags}}
+    <li>#️⃣<a href="/tags?expand={{. | getID}}#tag-{{. | getID}}">{{.}}</a></li>
+    {{end}}
+  </ul>
+  <div class="post-padding"></div>
+  {{end}}
+</section>
+{{end}}

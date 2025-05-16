@@ -1,0 +1,20 @@
+{{define "post"}}
+<li class="mantle admin-li" id="post-{{.ID}}">
+  <div>
+    <a href="/post/{{.ID}}">{{.Info.Title}}</a>
+    <p><em>{{.Date}}</em> (<em> {{range .Info.Tags}} #{{.}} {{end}} </em>)</p>
+  </div>
+  <div>
+    <button><a href="/admin/download/{{.ID}}" download>💾</a></button>
+    <button post="{{.ID}}" title="{{.Info.Title}}" onclick="updatePost(event)">✏️</button>
+    <button
+      hx-delete="/admin/delete/{{.ID}}"
+      hx-confirm="Are you sure you want to delete post '{{.Info.Title}}'?"
+      hx-target="#post-{{.ID}}"
+      hx-swap="outerHTML"
+    >
+      🗑️
+    </button>
+  </div>
+</li>
+{{end}}

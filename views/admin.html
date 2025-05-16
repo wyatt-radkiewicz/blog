@@ -1,0 +1,34 @@
+{{define "base"}}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{.Title}}</title>
+    <script src="/static/htmx.min.js" defer></script>
+    <script src="/static/admin.js" defer></script>
+    <link rel="stylesheet" href="/static/theme.css" />
+    <link rel="stylesheet" href="/static/base.css" />
+  </head>
+  <body>
+    {{template "nav" .}}
+    <main>
+      <form
+        id="upload-form"
+        class="mantle"
+        action="/admin"
+        method="POST"
+        enctype="multipart/form-data"
+      >
+        <label for="post-files" class="button">Choose Files</label>
+        <input type="hidden" name="upload" value="post" />
+        <input type="file" id="post-files" name="post" multiple />
+        <input type="submit" id="submit-post" value="Upload Post" />
+        <div id="file-list"></div>
+      </form>
+      <ul id="posts-list" class="admin-ul">
+        {{template "posts" .}}
+      </ul>
+    </main>
+  </body>
+</html>
+{{end}}
