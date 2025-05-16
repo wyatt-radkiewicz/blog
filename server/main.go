@@ -189,7 +189,7 @@ func HandleDaemon(cfg *BlogConfig) {
 				return
 			}
 
-			script := "git pull origin; rm blog; go build ./server && exec ./blog -d"
+			script := "git pull origin && go build ./server && exec ./blog -d"
 			syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
 		})
 	}
