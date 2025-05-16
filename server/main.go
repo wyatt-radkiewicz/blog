@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"syscall"
 
-	_ "github.com/joho/godotenv/autoload"
+	"github.com/joho/godotenv"
 )
 
 type BlogConfig struct {
@@ -22,6 +22,9 @@ type BlogConfig struct {
 	KeyFile  string
 	Addr     string
 	PIDFile  string
+	LogFile  *os.File
+
+	Daemon bool
 }
 
 func LoadBlogConfig() *BlogConfig {
@@ -33,8 +36,22 @@ func LoadBlogConfig() *BlogConfig {
 		KeyFile:  "server.key",
 		Addr:     ":3000",
 		PIDFile:  "",
+		LogFile:  os.Stdout,
+		Daemon:   false,
 	}
 
+	envfile := flag.String("e", ".env", "Where is the environment file")
+	daemon := flag.Bool("d", false, "Whether to daemonize the program")
+	flag.Parse()
+	if err := godotenv.Load(*envfile); err != nil {
+		log.Println("Error loading environment file")
+		log.Println(err)
+	}
+	cfg.Daemon = *daemon
+
+	if val, ok := os.LookupEnv("BLOG_CWD"); ok {
+		os.Chdir(val)
+	}
 	if val, ok := os.LookupEnv("BLOG_POST_DIR"); ok {
 		cfg.PostDir = val
 	}
@@ -53,10 +70,18 @@ func LoadBlogConfig() *BlogConfig {
 	if val, ok := os.LookupEnv("BLOG_ADDR"); ok {
 		cfg.Addr = val
 	}
-
-	pidfile := flag.String("p", "", "Where to write the pid file")
-	flag.Parse()
-	cfg.PIDFile = *pidfile
+	if val, ok := os.LookupEnv("BLOG_PIDFILE"); ok {
+		cfg.PIDFile = val
+	}
+	if val, ok := os.LookupEnv("BLOG_LOGFILE"); ok {
+		var err error
+		cfg.LogFile, err = os.Create(val)
+		if err != nil {
+			log.Println("Couldn't open log file")
+			log.Println(err)
+			cfg.LogFile = os.Stdout
+		}
+	}
 
 	return cfg
 }
@@ -64,14 +89,8 @@ func LoadBlogConfig() *BlogConfig {
 func main() {
 	cfg := LoadBlogConfig()
 
-	if cfg.PIDFile != "" {
-		data := []byte(strconv.FormatInt(int64(syscall.Getpid()), 10))
-		err := os.WriteFile(cfg.PIDFile, data, 0777)
-		if err != nil {
-			log.Println(err)
-			log.Println("Couldn't create the pid file!")
-		}
-	}
+	// Handle automatic deployment and daemon
+	HandleDaemon(cfg)
 
 	ps, err := NewPostStats(cfg)
 	if err != nil {
@@ -98,9 +117,6 @@ func main() {
 		http.ServeFile(w, r, r.URL.Path[1:])
 	})
 
-	// Handle automatic deployment
-	HandleDeploy(cfg)
-
 	// Run the server
 	if err := http.ListenAndServeTLS(cfg.Addr, cfg.CertFile, cfg.KeyFile, nil); err != nil {
 		log.Println(err)
@@ -112,18 +128,61 @@ func main() {
 	}
 }
 
-func HandleDeploy(cfg *BlogConfig) {
-	http.HandleFunc("POST /admin/deploy", func(w http.ResponseWriter, r *http.Request) {
-		sh, err := exec.LookPath("sh")
-		if err != nil {
-			log.Println("Can't find shell to run deployment script on")
-			return
+func HandleDaemon(cfg *BlogConfig) {
+	// Daemonize process
+	if os.Getenv("DAEMONIZED") == "" && cfg.Daemon {
+		// Close log file
+		if cfg.LogFile != os.Stdout {
+			cfg.LogFile.Close()
 		}
 
-		script := "git pull origin; rm blog; go build ./server && ./blog"
-		if cfg.PIDFile != "" {
-			script += fmt.Sprintf(" -p \"%s\"", cfg.PIDFile)
+		// Configure background process
+		cmd := exec.Command(os.Args[0], os.Args[1:]...)
+		cmd.Env = append(os.Environ(), "DAEMONIZED=1")
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setpgid: true,
 		}
-		syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
-	})
+		cmd.Stdout = nil
+		cmd.Stdin = nil
+		cmd.Stderr = nil
+
+		// Start background process
+		if err := cmd.Start(); err != nil {
+			log.Println(err)
+			log.Println("Couldn't daemonize process!!")
+			os.Exit(-1)
+		} else {
+			os.Exit(0)
+		}
+	}
+
+	// Set correct logfile
+	log.SetOutput(cfg.LogFile)
+
+	// Create PID file
+	if cfg.PIDFile != "" {
+		data := []byte(strconv.FormatInt(int64(syscall.Getpid()), 10))
+		err := os.WriteFile(cfg.PIDFile, data, 0777)
+		if err != nil {
+			log.Println(err)
+			log.Println("Couldn't create the pid file!")
+		}
+	}
+
+	if os.Getenv("DAEMONIZED") != "" {
+		// Re-deploy if we are a dameon
+		http.HandleFunc("POST /admin/deploy", func(w http.ResponseWriter, r *http.Request) {
+			sh, err := exec.LookPath("sh")
+			if err != nil {
+				log.Println("Can't find shell to run deployment script on")
+				return
+			}
+
+			script := "cd $BLOG_CWD; git pull origin; rm blog; go build ./server && exec ./blog"
+			for _, arg := range os.Args[1:] {
+				script += fmt.Sprintf(" %s", arg)
+			}
+			syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
+		})
+	}
 }
