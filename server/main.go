@@ -160,7 +160,6 @@ func main() {
 	}
 
 	log.Println("Handling deployment...")
-	log.Println(os.Getenv("PATH"))
 
 	// Pull latest code from git
 	if err := exec.Command("git", "pull", "origin").Run(); err != nil {
