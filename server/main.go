@@ -160,18 +160,21 @@ func main() {
 	}
 
 	log.Println("Handling deployment...")
+	log.Println(os.Getenv("PATH"))
 
 	// Pull latest code from git
 	if err := exec.Command("git", "pull", "origin").Run(); err != nil {
 		log.Println(err)
+	} else {
+		log.Println("Successfully pulled form origin")
 	}
-	log.Println("Successfully pulled form origin")
 
 	// Build new server code
 	if err := exec.Command("go", "build", "./server").Run(); err != nil {
 		log.Println(err)
+	} else {
+		log.Println("Successfully built server code")
 	}
-	log.Println("Successfully built server code")
 
 	// Close the old logfile
 	logFile.Close()
