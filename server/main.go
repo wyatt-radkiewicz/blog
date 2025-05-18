@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -21,9 +23,24 @@ type BlogConfig struct {
 	KeyFile  string
 	Addr     string
 	PIDFile  string
-	LogFile  *os.File
+	LogFile  string
 
 	Daemon bool
+}
+
+var (
+	runDeployment = false
+	logFile = os.Stdout
+)
+
+func openLogFile(path string) *os.File {
+	if file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0774); err != nil {
+		log.Println("Couldn't open log file")
+		log.Println(err)
+		return os.Stdout
+	} else {
+		return file
+	}
 }
 
 func LoadBlogConfig() *BlogConfig {
@@ -35,7 +52,7 @@ func LoadBlogConfig() *BlogConfig {
 		KeyFile:  "server.key",
 		Addr:     ":3000",
 		PIDFile:  "",
-		LogFile:  os.Stdout,
+		LogFile:  "",
 		Daemon:   false,
 	}
 
@@ -85,13 +102,7 @@ func LoadBlogConfig() *BlogConfig {
 		cfg.PIDFile = val
 	}
 	if val, ok := os.LookupEnv("BLOG_LOGFILE"); ok {
-		var err error
-		cfg.LogFile, err = os.Create(val)
-		if err != nil {
-			log.Println("Couldn't open log file")
-			log.Println(err)
-			cfg.LogFile = os.Stdout
-		}
+		logFile = openLogFile(val)
 	}
 
 	return cfg
@@ -99,9 +110,12 @@ func LoadBlogConfig() *BlogConfig {
 
 func main() {
 	cfg := LoadBlogConfig()
+	server := &http.Server{
+		Addr: cfg.Addr,
+	}
 
 	// Handle automatic deployment and daemon
-	HandleDaemon(cfg)
+	HandleDaemon(cfg, server)
 
 	ps, err := NewPostStats(cfg)
 	if err != nil {
@@ -129,22 +143,63 @@ func main() {
 	})
 
 	// Run the server
-	if err := http.ListenAndServeTLS(cfg.Addr, cfg.CertFile, cfg.KeyFile, nil); err != nil {
+	if err := server.ListenAndServeTLS(cfg.CertFile, cfg.KeyFile); err != http.ErrServerClosed {
 		log.Println(err)
 		log.Println("Failed opening up HTTPS server, defaulting to normal HTTP")
-		if err := http.ListenAndServe(cfg.Addr, nil); err != nil {
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Println(err)
 			return
 		}
 	}
+
+	// Run deployment script if nessesary
+	if !runDeployment {
+		// Close the old logfile
+		logFile.Close()
+		return
+	}
+
+	log.Println("Handling deployment...")
+
+	// Pull latest code from git
+	if err := exec.Command("git", "pull", "origin").Run(); err != nil {
+		log.Println(err)
+	}
+	log.Println("Successfully pulled form origin")
+
+	// Build new server code
+	if err := exec.Command("go", "build", "./server").Run(); err != nil {
+		log.Println(err)
+	}
+	log.Println("Successfully built server code")
+
+	// Close the old logfile
+	logFile.Close()
+
+	// Now execute the new blog executable
+	err = syscall.Exec("./blog", []string{"-d"}, os.Environ())
+	
+	// Re-open log file
+	if err != nil && cfg.LogFile != "" {
+		logFile = openLogFile(cfg.LogFile)
+		if logFile == os.Stdout {
+			os.Exit(-1)
+		}
+		
+		log.SetOutput(logFile)
+		log.Println(err)
+		log.Println("Couldn't start the next blog instance")
+		logFile.Close()
+		os.Exit(-1)
+	}
 }
 
-func HandleDaemon(cfg *BlogConfig) {
+func HandleDaemon(cfg *BlogConfig, server *http.Server) {
 	// Daemonize process
 	if os.Getenv("DAEMONIZED") == "" && cfg.Daemon {
 		// Close log file
-		if cfg.LogFile != os.Stdout {
-			cfg.LogFile.Close()
+		if logFile != os.Stdout {
+			logFile.Close()
 		}
 
 		// Configure background process
@@ -168,7 +223,7 @@ func HandleDaemon(cfg *BlogConfig) {
 	}
 
 	// Set correct logfile
-	log.SetOutput(cfg.LogFile)
+	log.SetOutput(logFile)
 
 	// Create PID file
 	if cfg.PIDFile != "" {
@@ -180,17 +235,31 @@ func HandleDaemon(cfg *BlogConfig) {
 		}
 	}
 
+	deploySignal := make(chan struct{})
+
+	go func() {
+		// Wait for deployment signal or terminate gracefully
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+		select {
+		case <-deploySignal:
+		case <-interrupt:
+		}
+
+		// Close the HTTP Server
+		log.Println("Shutting down server...")
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Println(err)
+		}
+	}()
+	
 	if os.Getenv("DAEMONIZED") != "" {
 		// Re-deploy if we are a dameon
 		http.HandleFunc("POST /admin/deploy", func(w http.ResponseWriter, r *http.Request) {
-			sh, err := exec.LookPath("sh")
-			if err != nil {
-				log.Println("Can't find shell to run deployment script on")
-				return
-			}
-
-			script := "git pull origin && go build ./server && exec ./blog -d"
-			syscall.Exec(sh, []string{"sh", "-c", script}, os.Environ())
+			go func() {
+				runDeployment = true
+				deploySignal <- struct{}{}
+			}()
 		})
 	}
 }

@@ -1,5 +1,5 @@
 :root {
-    --base: red;
+    --base: rgb(239, 241, 245);
     --text: rgb(76, 79, 105);
     --crust: rgb(220, 224, 232);
     --surface0: rgb(204, 208, 218);
