@@ -141,7 +141,7 @@ func (db *TagDB) Save(dir string) error {
 
 // Formats time for everything across the site
 func FormatDate(t time.Time) string {
-	return fmt.Sprintf("%d %s %d", t.Day(), t.Month().String(), t.Year())
+	return fmt.Sprintf("%d/%s/%d", t.Day(), t.Month().String(), t.Year())
 }
 
 // Returns an ordered list of post UUID's
