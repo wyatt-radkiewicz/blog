@@ -22,6 +22,7 @@ type BlogConfig struct {
 	CertFile string
 	KeyFile  string
 	Addr     string
+	Secure   bool
 	PIDFile  string
 	LogFile  string
 
@@ -51,6 +52,7 @@ func LoadBlogConfig() *BlogConfig {
 		CertFile: "server.crt",
 		KeyFile:  "server.key",
 		Addr:     ":3000",
+		Secure:	  false,
 		PIDFile:  "",
 		LogFile:  "",
 		Daemon:   false,
@@ -94,6 +96,9 @@ func LoadBlogConfig() *BlogConfig {
 	}
 	if val, ok := os.LookupEnv("BLOG_KEY_FILE"); ok {
 		cfg.KeyFile = val
+	}
+	if val, ok := os.LookupEnv("BLOG_SECURE"); ok {
+		cfg.Secure = val != "0"
 	}
 	if val, ok := os.LookupEnv("BLOG_ADDR"); ok {
 		cfg.Addr = val
@@ -143,13 +148,15 @@ func main() {
 	})
 
 	// Run the server
-	if err := server.ListenAndServeTLS(cfg.CertFile, cfg.KeyFile); err != http.ErrServerClosed {
-		log.Println(err)
-		log.Println("Failed opening up HTTPS server, defaulting to normal HTTP")
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+	if cfg.Secure {
+		err := server.ListenAndServeTLS(cfg.CertFile, cfg.KeyFile)
+		if err != http.ErrServerClosed {
 			log.Println(err)
 			return
 		}
+	} else if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Println(err)
+		return
 	}
 
 	// Run deployment script if nessesary
